@@ -25,12 +25,13 @@ Commands are defined in a JSON file named `commands.json`. The structure of the 
       "parameters": [
         {
           "name": "parameter_name",
-          "type": "int|float|str|bool",
-          "required": true,
-          "default": "default_value (if applicable)"
+          "type": "int|float|str|bool"
         }
       ],
-      "code": "microPython code to run on the hub"
+      "code": [
+        "# MicroPython code to be executed when the command is invoked",
+        "print(parameter_name)"
+      ]
     }
   ]
 }
@@ -46,20 +47,9 @@ Parameters are defined using the 'parameters' list within each command.
 Each parameter has the following fields:
 - `name`: The name of the parameter.
 - `type`: The data type of the parameter. Supported types are `int`, `float`, `str`, and `bool`.
-- `default`: (Optional) The default value for the parameter if it is not provided when invoking the command.
-- `required`: A boolean indicating whether the parameter is required.
 
 Parameters will be passed to the command code as variables with the same name as defined in the `name` field and will be of the specified `type`.
 When sending a command over serial, parameters should be provided in the order they are defined in the `parameters` list.
-
-#### Validation
-
-When a command is invoked, the following checks are performed on the parameters:
-- If a parameter is marked as `required` but is not provided
-- If a parameter is provided but does not match the specified `type`
-
-If a parameter is not required and not provided, the `default` value will be used if specified.
-If a parameter is not required, not provided and has no default value, it will be set to `None`.
 
 ### Command Code
 

@@ -52,13 +52,13 @@ class SpikeConnection:
         """
         Flash the Spike device with a command receiver program based on the provided configuration file.
         Args:
-            config_path (str): Path to the JSON configuration file defining commands
+            config_path (str): Path to the JSON or YAML configuration file defining commands
         """
         # TODO: tweak timeouts
         if not self.connected:
             raise Exception("Not connected to Spike device")
         
-        firmware = firmware_factory.from_json(config_path)
+        firmware = firmware_factory.from_file(config_path)
 
         # Interrupt any running program
         self.serial.write(b'\x03')  # Ctrl-C

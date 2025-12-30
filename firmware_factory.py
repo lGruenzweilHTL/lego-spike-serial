@@ -1,12 +1,24 @@
-﻿import json
-def from_json(file_path):
-    with open(file_path, 'r') as file:
-        data = json.load(file)
+﻿import os
+import json
+import yaml
+
+def load_config(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    with open(file_path, "r", encoding="utf-8") as f:
+        if ext in (".yaml", ".yml"):
+            return yaml.safe_load(f)
+        return json.load(f)
+
+def from_file(file_path):
+    data = load_config(file_path)
 
     firmware = ""
     start_lines = data.get("start_code", [])
-    for line in start_lines:
-        firmware += line + "\n"
+    if isinstance(start_lines, str):
+        firmware += start_lines.rstrip("\n") + "\n"
+    else:
+        for line in start_lines:
+            firmware += line + "\n"
 
     firmware += """
     while True:
@@ -23,10 +35,9 @@ def from_json(file_path):
 
     commands = data.get("commands", [])
     for command in commands:
-        add_command(firmware, command)
+        firmware = add_command(firmware, command)
 
     return firmware.encode("utf-8")
-
 
 def add_command(firmware, command):
     statement_indent = " " * 8
@@ -34,24 +45,29 @@ def add_command(firmware, command):
 
     name = command.get("name", "").lower()
     params = command.get("parameters", [])
-    code_lines = command.get("code", [])
+    raw_code = command.get("code", [])
+    if isinstance(raw_code, str):
+        code_lines = raw_code.splitlines()
+    else:
+        code_lines = raw_code
 
     firmware += f'{statement_indent}if line.lower() == "{name}":\n'
-
-    # Parameter parsing
     firmware += f'{code_indent}cmd_parts = line.split()\n'
-    for param in params:
+
+    for idx, param in enumerate(params):
         param_name = param.get("name", "")
         param_type = param.get("type", "str")
+        part_index = idx + 1
         if param_type == "int":
-            firmware += f'{code_indent}{param_name} = int(cmd_parts[{params.index(param_name) + 1}])\n'
+            firmware += f'{code_indent}{param_name} = int(cmd_parts[{part_index}])\n'
         elif param_type == "float":
-            firmware += f'{code_indent}{param_name} = float(cmd_parts[{params.index(param_name) + 1}])\n'
+            firmware += f'{code_indent}{param_name} = float(cmd_parts[{part_index}])\n'
         elif param_type == "bool":
-            firmware += f'{code_indent}{param_name} = cmd_parts[{params.index(param_name) + 1}].lower() == "true"\n'
+            firmware += f'{code_indent}{param_name} = cmd_parts[{part_index}].lower() == "true"\n'
         else:
-            firmware += f'{code_indent}{param_name} = cmd_parts[{params.index(param_name) + 1}]\n'
+            firmware += f'{code_indent}{param_name} = cmd_parts[{part_index}]\n'
 
-    # Command code
     for line in code_lines:
         firmware += f'{code_indent}{line}\n'
+
+    return firmware

@@ -6,7 +6,7 @@ BAUD = 115200
 
 connection = SpikeConnection(PORT, BAUD)
 connection.connect()
-connection.flash("commands.json")  # Flash the hub with commands from config
+connection.flash("example/config.yaml")  # Flash the hub with commands from config
 
 try:
     while True:

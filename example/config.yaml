@@ -1,0 +1,15 @@
+﻿start_code: |
+  import sys, hub, motor
+  from hub import port
+  print('HUB: READY')
+
+commands:
+  - name: ping
+    parameters: []
+    code: "print(\"HUB: PONG\")"
+
+  - name: kill
+    parameters: []
+    code: |
+      print("HUB: Exiting")
+      sys.exit(0)

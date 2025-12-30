@@ -7,16 +7,22 @@ This repository contains a command interpreter for controlling Lego Spike Prime 
 - Connect to Lego Spike hubs via USB serial.
 - Send commands to control motors, lights, and sensors.
 - Receive data from sensors.
-- Custom commands using a simple command syntax with a json configuration file.
+- Define custom commands using a simple command syntax with a JSON or YAML configuration file.
 
-## Command definitions
+### Planned Features
 
-Commands are defined in a JSON file named `commands.json`. The structure of the JSON file is as follows:
+- Log levels for debugging and information.
+- Better configuration options.
+- Optional parameters for commands.
+
+## Config file (JSON)
+
+Commands and other configuration is defined in a JSON file. The following is an example of the JSON structure:
 ```json
 {
   "start_code": [
-    "import hub",
-    "import time",
+    "# Start code here",
+    "# Use this for imports and helper functions",
     "print('Hub ready')"
   ],
   "commands": [
@@ -36,6 +42,30 @@ Commands are defined in a JSON file named `commands.json`. The structure of the 
   ]
 }
 ```
+
+## Config file (YAML)
+
+The same configuration can be defined in a YAML file. The following is an example of the YAML structure:
+```yaml
+start_code: |
+  import sys, hub, motor
+  from hub import port
+  print('HUB: READY')
+
+commands:
+  - name: command_name
+    parameters:
+      - name: parameter_name
+        type: int|float|str|bool
+    code: |
+      # MicroPython code to be executed when the command is invoked
+      print(parameter_name)
+```
+
+> [!TIP]
+> We recommend using YAML for better readability, especially for larger configurations.
+> This also makes it easier to include multi-line code blocks by using literal style (`|`).
+
 
 ### Start Code
 

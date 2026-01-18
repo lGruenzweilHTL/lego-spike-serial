@@ -21,17 +21,16 @@ def from_file(file_path):
             firmware += line + "\n"
 
     firmware += """
-    while True:
-        try:
-            line = sys.stdin.readline()
-            if not line:
-                continue
-            line = line.strip()
-            if not line:
-                continue
-            hub.sound.beep(880, 120)
-            print("HUB: ACK ->", line)
-    """
+while True:
+    try:
+        line = sys.stdin.readline()
+        if not line:
+            continue
+        line = line.strip()
+        if not line:
+            continue
+        print("HUB: ACK ->", line)
+"""
 
     commands = data.get("commands", [])
     for command in commands:
@@ -51,7 +50,7 @@ def add_command(firmware, command):
     else:
         code_lines = raw_code
 
-    firmware += f'{statement_indent}if line.lower() == "{name}":\n'
+    firmware += f'{statement_indent}if line.lower().startswith("{name}"):\n'
     firmware += f'{code_indent}cmd_parts = line.split()\n'
 
     for idx, param in enumerate(params):

@@ -13,3 +13,12 @@ commands:
     code: |
       print("HUB: Exiting")
       sys.exit(0)
+
+  - name: beep
+    parameters:
+      - name: frequency
+        type: int
+      - name: durationMs
+        type: int
+    code: |
+      hub.sound.beep(frequency, durationMs)

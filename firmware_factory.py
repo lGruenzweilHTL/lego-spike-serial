@@ -50,7 +50,7 @@ def add_command(firmware, command):
     else:
         code_lines = raw_code
 
-    firmware += f'{statement_indent}if line.lower().startswith("{name}"):\n'
+    firmware += f'{statement_indent}if line.lower().startswith("{name} "):\n'
     firmware += f'{code_indent}cmd_parts = line.split()\n'
 
     for idx, param in enumerate(params):

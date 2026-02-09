@@ -29,12 +29,17 @@ while True:
         line = line.strip()
         if not line:
             continue
-        print("HUB: ACK ->", line)
+        print("HUB: ACK ->", f"'{line}'")
 """
 
     commands = data.get("commands", [])
     for command in commands:
         firmware = add_command(firmware, command)
+
+    firmware += """
+    except Exception  as e:
+        print("HUB: ERROR ->", e)
+    """
 
     return firmware.encode("utf-8")
 

@@ -1,6 +1,7 @@
 ﻿start_code: |
   import sys, hub, motor
   from hub import port
+  from runloop import sleep_ms
   print('HUB: READY')
 
 commands:
@@ -22,3 +23,53 @@ commands:
         type: int
     code: |
       hub.sound.beep(frequency, durationMs)
+
+  - name: move
+    parameters:
+      - name: port
+        type: int
+      - name: degrees
+        type: int
+      - name: speed
+        type: int
+    code: |
+      motor.run_for_degrees(port, degrees, speed)
+
+  - name: drive
+    parameters:
+      - name: leftPort
+        type: int
+      - name: rightPort
+        type: int
+      - name: speed
+        type: int
+      - name: durationMs
+        type: int
+    code: |
+      seconds = durationMs / 1000.0
+      degrees = int(speed * seconds)
+      motor.run_for_degrees(leftPort, degrees, speed)
+      motor.run_for_degrees(rightPort, -degrees, speed)
+
+  - name: turn
+    parameters:
+      - name: leftPort
+        type: int
+      - name: rightPort
+        type: int
+      - name: speed
+        type: int
+      - name: durationMs
+        type: int
+      - name: direction
+        type: str
+    code: |
+      seconds = durationMs / 1000.0
+      deg = int(abs(speed) * seconds)
+      d = direction.lower() if isinstance(direction, str) else 'right'
+      if d.startswith('l'):
+          motor.run_for_degrees(leftPort, -deg, -abs(speed))
+          motor.run_for_degrees(rightPort, deg, abs(speed))
+      else:
+          motor.run_for_degrees(leftPort, deg, abs(speed))
+          motor.run_for_degrees(rightPort, -deg, -abs(speed))

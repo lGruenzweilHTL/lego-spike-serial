@@ -22,8 +22,11 @@ try:
         result = connection.send_command(user_line, wait=True, timeout=3.0)
         if result is None:
             print("PC: no response (timeout)")
-        elif result is str:
-            print(result)
+        elif isinstance(result, str):
+            r = result.strip()
+            # ignore explicit awaitable markers returned by the device
+            if not r.lower().startswith("<awaitable"):
+                print(result)
 except KeyboardInterrupt:
     print("\nPC: Bye!")
 finally:

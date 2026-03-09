@@ -1,10 +1,8 @@
-import time
 from command_handler import SpikeConnection
 
 PORT = "/dev/ttyACM0"        # This is for linux. On Windows: COM9 ; macOS: /dev/tty.usbmodem*
 BAUD = 115200
 
-# TODO: fix command recognition for no-parameter commands (ping)
 connection = SpikeConnection(PORT, BAUD)
 connection.connect()
 connection.flash("example/config.yaml")  # Flash the hub with commands from config
@@ -12,9 +10,16 @@ connection.flash("example/config.yaml")  # Flash the hub with commands from conf
 try:
     while True:
         user_line = input("> ")
-        # Send the line followed by newline so the hub's readline() returns
-        connection.send_command(user_line)
-        time.sleep(0.2)
-        print(connection.read_available())  # Read and print hub response
+        if not user_line:
+            continue
+        # Send the command with a transaction id and wait for a matching response.
+        # send_command will return the payload string (without txid) or None on timeout.
+        result = connection.send_command(user_line, wait=True, timeout=3.0)
+        if result is None:
+            print("PC: no response (timeout)")
+        else:
+            print(result)
 except KeyboardInterrupt:
     print("\nPC: Bye!")
+finally:
+    connection.disconnect()

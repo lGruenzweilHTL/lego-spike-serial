@@ -1,5 +1,5 @@
 ﻿start_code: |
-  import sys, hub, motor
+  import hub, motor
   from hub import port
   from runloop import sleep_ms
   print('HUB: READY')
@@ -7,7 +7,9 @@
 commands:
   - name: ping
     parameters: []
-    code: "print(\"HUB: PONG\")"
+    code: |
+      print("HUB: PONG")
+      result = "test"
 
   - name: kill
     parameters: []

@@ -1,7 +1,12 @@
+import firmware_factory
 from command_handler import SpikeConnection
 
 PORT = "/dev/ttyACM0"        # This is for linux. On Windows: COM9 ; macOS: /dev/tty.usbmodem*
 BAUD = 115200
+
+fw = firmware_factory.from_file("example/config.yaml")
+print(fw.decode())
+#while True: pass
 
 connection = SpikeConnection(PORT, BAUD)
 connection.connect()
@@ -17,7 +22,7 @@ try:
         result = connection.send_command(user_line, wait=True, timeout=3.0)
         if result is None:
             print("PC: no response (timeout)")
-        else:
+        elif result is str:
             print(result)
 except KeyboardInterrupt:
     print("\nPC: Bye!")

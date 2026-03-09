@@ -28,6 +28,11 @@ class SpikeConnection:
         # Reader thread to process incoming messages and dispatch by txid
         self._reader_thread = None
         self._stop_reader = threading.Event()
+        # awaiting: map of txid -> timestamp when a txid-only/empty-payload line was seen
+        # used to associate a following untransactioned line with that txid
+        self._awaiting = {}
+        # how long (seconds) to consider a txid awaiting a following payload
+        self._awaiting_timeout = 2.0
 
     def connect(self, timeout=0.1):
         """Connect to the Spike device.
@@ -104,7 +109,7 @@ class SpikeConnection:
         end = time.time() + timeout
         out = b""
         while time.time() < end:
-            num_bytes = self.serial.in_waiting or 1 # TODO: find out what happens when 'or 1' is removed
+            num_bytes = self.serial.in_waiting or 1
             chunk = self.serial.read(num_bytes)
             if not chunk:
                 time.sleep(0.01)
@@ -163,12 +168,11 @@ class SpikeConnection:
         while not self._stop_reader.is_set() and self.connected:
             try:
                 line = self.serial.readline()
-                print("Line: " + line)
             except Exception:
-                # if serial port is closed or error occurs, stop loop
+                print("PC: serial.readline() raised; check if the serial port is open")
                 break
             if not line:
-                # timeout, no data
+                #print("PC: serial.readline() returned empty string; likely the result of a timeout")
                 continue
             try:
                 text = line.decode('utf-8', errors='replace').strip()
@@ -177,6 +181,7 @@ class SpikeConnection:
             if not text:
                 continue
             # Parse txid at start: expect '<txid> <payload>' where txid is integer
+            #print("Line: " + text)
             parts = text.split(' ', 1)
             txid = None
             payload = text
@@ -186,14 +191,67 @@ class SpikeConnection:
                     txid = int(possible)
                     payload = parts[1] if len(parts) > 1 else ''
                 except Exception:
-                    # not a transactioned message; ignore or could be logged
+                    # not a transactioned message: before treating it as generic
+                    # untransactioned output, check whether there was a recently
+                    # seen txid-only line that was awaiting a following payload.
+                    now = time.time()
+                    matched_txid = None
+                    matched_ts = 0
+                    # choose the most recent awaiting txid within threshold
+                    for atxid, ts in list(self._awaiting.items()):
+                        if now - ts <= self._awaiting_timeout and ts > matched_ts:
+                            matched_txid = atxid
+                            matched_ts = ts
+                    if matched_txid is not None:
+                        # consume awaiting marker and dispatch this line as payload
+                        try:
+                            entry = self._pending.pop(matched_txid, None)
+                            # clear awaiting marker regardless; we've consumed it
+                            self._awaiting.pop(matched_txid, None)
+                            if entry:
+                                callback, event, result_container = entry
+                                if result_container is not None:
+                                    result_container['result'] = text
+                                if callback:
+                                    try:
+                                        callback(matched_txid, text)
+                                    except Exception as e:
+                                        print(f"PC: callback for txid {matched_txid} raised: {e}")
+                                if event is not None:
+                                    event.set()
+                                # handled -> continue to next loop iteration
+                                continue
+                        except Exception:
+                            # on any error fall back to marking as untransactioned
+                            pass
+                    # genuine untransactioned message
                     print("Untransactioned message: " + text)
                     txid = None
             if txid is not None:
-                entry = None
-                entry = self._pending.pop(txid, None)
+                # Look up pending entry but don't remove it immediately. Some firmwares
+                # may emit txid-only or intermediate lines; only consider the message
+                # "final" when payload is non-empty. This avoids popping the mapping
+                # on an empty/status line and losing the subsequent final payload.
+                entry = self._pending.get(txid, None)
                 if entry:
                     callback, event, result_container = entry
+                    # If payload is empty, treat this as an intermediate/heartbeat
+                    # and do not complete the transaction yet.
+                    if payload == '':
+                        # mark this txid as awaiting a following payload line
+                        self._awaiting[txid] = time.time()
+                        # Optionally store the empty/partial value for waiters
+                        if result_container is not None:
+                            result_container['result'] = payload
+                        # Do not call callback or set the event for an empty payload.
+                        continue
+
+                    # At this point we have a non-empty payload: consume and dispatch
+                    # remove the pending entry now that we have the final payload
+                    # clear any awaiting marker for this txid (it may have been set
+                    # earlier when an empty/txid-only line was seen)
+                    self._awaiting.pop(txid, None)
+                    self._pending.pop(txid, None)
                     # store result for waiter
                     if result_container is not None:
                         result_container['result'] = payload
@@ -238,15 +296,13 @@ class SpikeConnection:
         # form message as: '<txid> <command>\n'
         full = f"{txid} {command}\n".encode('utf-8')
 
-        # prepare waiting structures if needed
-        event = None
-        result_container = None
-        if wait or callback is not None:
-            event = threading.Event() if wait else None
-            result_container = {} if wait else None
-            # store the callback/event/result so reader can dispatch
-            # callback may be None; that's ok for wait-only usage
-            self._pending[txid] = (callback, event, result_container)
+        # prepare waiting structures and ALWAYS register a pending entry so
+        # replies are matched even when the caller doesn't pass wait/callback.
+        event = threading.Event() if wait else None
+        result_container = {} if wait else None
+        # store the callback/event/result so reader can dispatch later
+        # callback may be None; that's ok for callers who will check results later
+        self._pending[txid] = (callback, event, result_container)
 
         # send the command using chunked writes
         self._write_chunks(full)

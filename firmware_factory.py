@@ -48,7 +48,7 @@ while True:
         # prefix responses with it so the host can match them.
         # Command-specific handlers below can print their own responses; they should
         # also include the txid if they want the host to match them.
-        print("Echo: " + txid + ' ' + payload)  # optional echo
+        #print("Echo: " + txid + ' ' + payload)  # optional echo
 """
 
     commands = data.get("commands", [])

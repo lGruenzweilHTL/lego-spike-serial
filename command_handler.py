@@ -2,7 +2,7 @@
 import time
 import serial
 import threading
-from typing import Callable, Optional, Dict, Tuple, Any
+from typing import Callable, Optional, Dict, Tuple, Any, Union
 
 class SpikeConnection:
     def __init__(self, port: str, baud: int):

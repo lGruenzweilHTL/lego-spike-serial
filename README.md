@@ -15,6 +15,23 @@ This repository contains a command interpreter for controlling Lego Spike Prime 
 - Better configuration options.
 - Optional parameters for commands.
 
+## Usage
+
+Connect the Lego Spike hub via USB. Run the `main.py` script with the configuration file:
+
+```bash
+python3 main.py example/config.yaml
+```
+
+Optional arguments:
+- `-p` or `--port`: Specify the serial port (default: `/dev/ttyACM0`)
+- `-b` or `--baud`: Specify the baud rate (default: `115200`)
+
+Example:
+```bash
+python3 main.py example/config.yaml --port /dev/ttyUSB0 --baud 115200
+```
+
 ## Config file (JSON)
 
 Commands and other configuration is defined in a JSON file. The following is an example of the JSON structure:

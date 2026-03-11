@@ -1,27 +1,27 @@
 ﻿import os
 import json
 import yaml
+from typing import Dict, Any, List, Union
 
-def load_config(file_path):
+def load_config(file_path: str) -> Dict[str, Any]:
     ext = os.path.splitext(file_path)[1].lower()
     with open(file_path, "r", encoding="utf-8") as f:
         if ext in (".yaml", ".yml"):
             return yaml.safe_load(f)
         return json.load(f)
 
-def from_file(file_path):
+def from_file(file_path: str) -> bytes:
     data = load_config(file_path)
+    lines: List[str] = ["import sys"]
 
-    firmware = "import sys\n"
     start_lines = data.get("start_code", [])
     if isinstance(start_lines, str):
-        firmware += start_lines.rstrip("\n") + "\n"
+        lines.append(start_lines.rstrip("\n"))
     else:
-        for line in start_lines:
-            firmware += line + "\n"
+        lines.extend(start_lines)
 
     # Main loop: read a line, optionally parse a leading txid, and set `payload` to the command text
-    firmware += """
+    lines.append("""
 while True:
     try:
         line = sys.stdin.readline()
@@ -43,20 +43,14 @@ while True:
             # no numeric txid; treat entire line as payload
             txid = ''
             payload = line
-
-        # For simple ACK/debugging we can echo the payload back; if a txid was provided,
-        # prefix responses with it so the host can match them.
-        # Command-specific handlers below can print their own responses; they should
-        # also include the txid if they want the host to match them.
-        #print("Echo: " + txid + ' ' + payload)  # optional echo
-"""
+""")
 
     commands = data.get("commands", [])
     for command in commands:
-        firmware = add_command(firmware, command)
+        add_command(lines, command)
 
-    firmware += """
-    except Exception  as e:
+    lines.append("""
+    except Exception as e:
         # include txid if present when reporting errors
         try:
             if txid:
@@ -65,17 +59,18 @@ while True:
                 print('HUB_ERROR: ' + str(e))
         except Exception:
             pass
-"""
+""")
 
-    return firmware.encode("utf-8")
+    return "\n".join(lines).encode("utf-8")
 
-def add_command(firmware, command):
+def add_command(lines: List[str], command: Dict[str, Any]) -> None:
     statement_indent = " " * 8
     code_indent = " " * 12
 
     name = command.get("name", "").lower()
     params = command.get("parameters", [])
     raw_code = command.get("code", [])
+    
     if isinstance(raw_code, str):
         code_lines = raw_code.splitlines()
     else:
@@ -84,40 +79,40 @@ def add_command(firmware, command):
     # Use the parsed `payload` variable in generated handlers.
     # If there are no parameters, match the command by equality; otherwise match by startswith and split.
     if not params:
-        firmware += f'{statement_indent}if payload.lower() == "{name}":\n'
+        lines.append(f'{statement_indent}if payload.lower() == "{name}":')
         # no cmd_parts parsing for no-arg commands
     else:
-        firmware += f'{statement_indent}if payload.lower().startswith("{name} "):\n'
-        firmware += f'{code_indent}cmd_parts = payload.split()\n'
+        lines.append(f'{statement_indent}if payload.lower().startswith("{name} "):')
+        lines.append(f'{code_indent}cmd_parts = payload.split()')
 
     # initialize result so user code can set `result = ...` to return a value
-    firmware += f'{code_indent}result = None\n'
+    lines.append(f'{code_indent}result = None')
 
     for idx, param in enumerate(params):
         param_name = param.get("name", "")
         param_type = param.get("type", "str")
         part_index = idx + 1
+        
         if param_type == "int":
-            firmware += f'{code_indent}{param_name} = int(cmd_parts[{part_index}])\n'
+            lines.append(f'{code_indent}{param_name} = int(cmd_parts[{part_index}])')
         elif param_type == "float":
-            firmware += f'{code_indent}{param_name} = float(cmd_parts[{part_index}])\n'
+            lines.append(f'{code_indent}{param_name} = float(cmd_parts[{part_index}])')
         elif param_type == "bool":
-            firmware += f'{code_indent}{param_name} = cmd_parts[{part_index}].lower() == "true"\n'
+            lines.append(f'{code_indent}{param_name} = cmd_parts[{part_index}].lower() == "true"')
         else:
-            firmware += f'{code_indent}{param_name} = cmd_parts[{part_index}]\n'
+            lines.append(f'{code_indent}{param_name} = cmd_parts[{part_index}]')
 
     for line in code_lines:
         # Generated code should operate on `payload` (or derived params) and may set `result`.
-        firmware += f'{code_indent}{line}\n'
+        lines.append(f'{code_indent}{line}')
 
     # If the user code set `result` (not None), print it back prefixed by txid when available
-    firmware += f"{code_indent}if result is not None:\n"
-    firmware += f"{code_indent}    try:\n"
-    firmware += f"{code_indent}        if txid:\n"
-    firmware += f"{code_indent}            print(txid + ' ' + str(result))\n"
-    firmware += f"{code_indent}        else:\n"
-    firmware += f"{code_indent}            print(str(result))\n"
-    firmware += f"{code_indent}    except Exception:\n"
-    firmware += f"{code_indent}        pass\n"
+    lines.append(f"{code_indent}if result is not None:")
+    lines.append(f"{code_indent}    try:")
+    lines.append(f"{code_indent}        if txid:")
+    lines.append(f"{code_indent}            print(txid + ' ' + str(result))")
+    lines.append(f"{code_indent}        else:")
+    lines.append(f"{code_indent}            print(str(result))")
+    lines.append(f"{code_indent}    except Exception:")
+    lines.append(f"{code_indent}        pass")
 
-    return firmware

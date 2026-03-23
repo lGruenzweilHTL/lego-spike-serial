@@ -1,17 +1,33 @@
 import argparse
 import sys
 import firmware_factory
+import readline
 from command_handler import SpikeConnection
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Lego Spike Serial Command Interface")
     parser.add_argument("config", help="Path to the configuration file (YAML/JSON)")
-    parser.add_argument("-p", "--port", default="/dev/ttyACM0", help="Serial port (default: /dev/ttyACM0)")
-    parser.add_argument("-b", "--baud", type=int, default=115200, help="Baud rate (default: 115200)")
+    parser.add_argument(
+        "-p",
+        "--port",
+        default="/dev/ttyACM0",
+        help="Serial port (default: /dev/ttyACM0)",
+    )
+    parser.add_argument(
+        "-b", "--baud", type=int, default=115200, help="Baud rate (default: 115200)"
+    )
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
+
+    # Load command history
+    try:
+        readline.read_history_file(".spike_history")
+    except FileNotFoundError:
+        pass
 
     print(f"Loading configuration from {args.config}...")
     try:
@@ -36,19 +52,19 @@ if __name__ == "__main__":
         print(f"Error flashing firmware: {e}")
         connection.disconnect()
         sys.exit(1)
-    
+
     print("Ready. Type commands below.")
-    
+
     try:
         while True:
             try:
                 user_line = input("> ")
             except EOFError:
                 break
-                
+
             if not user_line:
                 continue
-            
+
             # Send the command with a transaction id and wait for a matching response.
             # send_command will return the payload string (without txid) or None on timeout.
             result = connection.send_command(user_line, wait=True, timeout=3.0)
@@ -62,5 +78,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nPC: Bye!")
     finally:
+        # Save command history
+        try:
+            readline.write_history_file(".spike_history")
+        except Exception:
+            pass
         connection.disconnect()
-

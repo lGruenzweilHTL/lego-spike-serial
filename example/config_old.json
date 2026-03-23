@@ -8,7 +8,15 @@
     {
       "name": "ping",
       "parameters": [],
-      "code": "print(\"HUB: PONG\")"
+      "code": "return \"HUB: PONG\""
+    },
+    {
+      "name": "add",
+      "parameters": [
+        {"name": "a", "type": "int"},
+        {"name": "b", "type": "int"}
+      ],
+      "code": "return a + b"
     },
     {
       "name": "kill",
@@ -17,6 +25,8 @@
         "print(\"HUB: Exiting\")",
         "sys.exit(0)"
       ]
+    }
+  ]
     }
   ]
 }

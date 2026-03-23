@@ -8,7 +8,7 @@ commands:
   - name: ping
     parameters: []
     code: |
-      result = "test"
+      return "test"
 
   - name: kill
     parameters: []

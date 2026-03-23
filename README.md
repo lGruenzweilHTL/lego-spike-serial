@@ -102,10 +102,9 @@ When sending a command over serial, parameters should be provided in the order t
 
 The `code` field contains the microPython code that will be executed on the Lego Spike hub when the command is invoked. The code can use the parameters defined in the `parameters` list.
 
-Use the `print()` function to send output back to the host computer over serial.
+Use the `return` statement to send output back to the host computer over serial. The returned value will be printed prefixed by the transaction ID if present.
 
-> [!IMPORTANT]
-> Do not return values from the command code. Instead, use `print()` to send data back to the host.
+Alternatively, use the `print()` function for additional output that doesn't replace the return value.
 
 ## Acknowledgments
 

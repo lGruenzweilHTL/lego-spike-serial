@@ -156,3 +156,6 @@ cython_debug/
 
 # VS Code
 .vscode/
+
+## Custom: Spike command history
+.spike_history

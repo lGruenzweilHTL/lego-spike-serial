@@ -32,6 +32,8 @@ Example:
 python3 main.py example/config.yaml --port /dev/ttyUSB0 --baud 115200
 ```
 
+The command interface supports command history: use the up-arrow key to recall previous commands.
+
 ## Config file (JSON)
 
 Commands and other configuration is defined in a JSON file. The following is an example of the JSON structure:
